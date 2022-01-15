@@ -18,12 +18,26 @@ pub const API_URL: &str = "wss://gateway.discord.gg/?v=9&encoding=json";
 
 pub enum Payload {
     Heartbeat,
+    Identify(String, u64),
 }
 
 impl ToString for Payload {
     fn to_string(&self) -> String {
         match self {
             Self::Heartbeat => r#"{"op":1,"d":null}"#.to_string(),
+            Self::Identify(token, intents) => serde_json::to_string(&json!({
+                "op": 2,
+                "d": {
+                    "token": token,
+                    "intents": intents,
+                    "properties": {
+                        "$os": "linux",
+                        "$browser": "rwcord",
+                        "$device": "rwcord"
+                    }
+                }
+            }))
+            .unwrap(),
         }
     }
 }
@@ -57,7 +71,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             10 => {
                                 let heartbeat_interval = json["d"]["heartbeat_interval"].as_u64().unwrap();
                                 let heartbeat_tx = heartbeat_tx.clone();
+
                                 spawn_heartbeater(heartbeat_interval, heartbeat_tx);
+
+                                let identify = Message::Text(Payload::Identify("".into(), 513).to_string());
+                                write.send(identify).await.unwrap();
                             }
                             _ => (),
                         }
