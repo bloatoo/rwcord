@@ -42,8 +42,7 @@ impl ToString for Payload {
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+pub async fn connect(token: String) -> Result<(), Box<dyn Error>> {
     let (sock, _) = connect_async(API_URL)
         .await
         .expect("Failed connecting to Discord");
@@ -74,7 +73,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
                                 spawn_heartbeater(heartbeat_interval, heartbeat_tx);
 
-                                let identify = Message::Text(Payload::Identify("".into(), 513).to_string());
+                                let identify = Message::Text(Payload::Identify(token.clone(), 513).to_string());
                                 write.send(identify).await.unwrap();
                             }
                             _ => (),
