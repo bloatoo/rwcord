@@ -42,55 +42,65 @@ impl ToString for Payload {
     }
 }
 
-pub async fn connect(token: String) -> Result<(), Box<dyn Error>> {
-    let (sock, _) = connect_async(API_URL)
-        .await
-        .expect("Failed connecting to Discord");
+pub struct Client {
+    token: String,
+}
 
-    let (mut write, read) = sock.split();
-    let (heartbeat_tx, heartbeat_rx) = mpsc::channel::<u8>(1);
-
-    let mut read = read.fuse();
-    let mut heartbeat_rx = heartbeat_rx.fuse();
-
-    loop {
-        select! {
-            msg = read.next() => {
-                match msg {
-                    Some(msg) => {
-                        let msg = msg.expect("Message contains an error");
-                        let text = msg.to_text().unwrap();
-
-                        let json: Value = serde_json::from_str(text).unwrap();
-
-
-                        let opcode = json["op"].as_u64().unwrap();
-
-                        match opcode {
-                            10 => {
-                                let heartbeat_interval = json["d"]["heartbeat_interval"].as_u64().unwrap();
-                                let heartbeat_tx = heartbeat_tx.clone();
-
-                                spawn_heartbeater(heartbeat_interval, heartbeat_tx);
-
-                                let identify = Message::Text(Payload::Identify(token.clone(), 513).to_string());
-                                write.send(identify).await.unwrap();
-                            }
-                            _ => (),
-                        }
-                    }
-                    None => break,
-                }
-            }
-
-            _ = heartbeat_rx.next() => {
-                let message = Message::Text(Payload::Heartbeat.to_string());
-                write.send(message).await.unwrap();
-            }
-        }
+impl Client {
+    pub fn new(token: String) -> Self {
+        Self { token }
     }
 
-    Ok(())
+    pub async fn start(&self) -> Result<(), Box<dyn Error>> {
+        let (sock, _) = connect_async(API_URL)
+            .await
+            .expect("Failed connecting to Discord");
+
+        let (mut write, read) = sock.split();
+        let (heartbeat_tx, heartbeat_rx) = mpsc::channel::<u8>(1);
+
+        let mut read = read.fuse();
+        let mut heartbeat_rx = heartbeat_rx.fuse();
+
+        loop {
+            select! {
+                msg = read.next() => {
+                    match msg {
+                        Some(msg) => {
+                            let msg = msg.expect("Message contains an error");
+                            let text = msg.to_text().unwrap();
+
+                            let json: Value = serde_json::from_str(text).unwrap();
+
+
+                            let opcode = json["op"].as_u64().unwrap();
+
+                            match opcode {
+                                10 => {
+                                    let heartbeat_interval = json["d"]["heartbeat_interval"].as_u64().unwrap();
+                                    let heartbeat_tx = heartbeat_tx.clone();
+
+                                    spawn_heartbeater(heartbeat_interval, heartbeat_tx);
+
+                                    let identify = Message::Text(Payload::Identify(self.token.clone(), 513).to_string());
+                                    write.send(identify).await.unwrap();
+                                }
+                                _ => (),
+                            }
+                        }
+                        None => break,
+                    }
+                }
+
+                _ = heartbeat_rx.next() => {
+                    let message = Message::Text(Payload::Heartbeat.to_string());
+                    write.send(message).await.unwrap();
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 fn spawn_heartbeater(interval: u64, mut sender: Sender<u8>) {
