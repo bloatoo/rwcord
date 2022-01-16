@@ -16,7 +16,7 @@ use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message as TungsteniteMessage;
 
 pub mod discord;
-use discord::{EventType, Message, Payload, API_URL};
+use discord::{EventType, Message, Payload, GATEWAY_URL};
 
 pub mod http;
 use http::HTTPClient;
@@ -24,8 +24,8 @@ use http::HTTPClient;
 #[async_trait]
 pub trait Handler {
     async fn on_message_create(_message: Message, _http: Box<HTTPClient>) {}
-    async fn on_ready() {}
-    async fn on_guild_create() {}
+    async fn on_ready(_http: Box<HTTPClient>) {}
+    async fn on_guild_create(_http: Box<HTTPClient>) {}
 }
 
 pub struct Client {
@@ -38,7 +38,7 @@ impl Client {
     }
 
     pub async fn start<H: Handler>(&self) -> Result<(), Box<dyn Error>> {
-        let (sock, _) = connect_async(API_URL)
+        let (sock, _) = connect_async(GATEWAY_URL)
             .await
             .expect("Failed connecting to Discord");
 
@@ -60,11 +60,12 @@ impl Client {
                             let msg = msg.expect("Message contains an error");
                             let text = msg.to_text().unwrap();
 
+                            if text.is_empty() { continue; }
+
                             let json: Value = serde_json::from_str(text).unwrap();
+                            println!("{}", serde_json::to_string_pretty(&json).unwrap());
 
                             let opcode = json["op"].as_u64().unwrap();
-
-                            println!("{}", serde_json::to_string_pretty(&json).unwrap());
 
                             match opcode {
                                 10 => {
@@ -94,10 +95,10 @@ impl Client {
                                     }
                                     Ready => {
                                         tokio::spawn(async move {
-                                            H::on_ready().await;
+                                            H::on_ready(http_client).await;
                                         });
                                     }
-                                    GuildCreate => { tokio::spawn(async move { H::on_guild_create().await; }); }
+                                    GuildCreate => { tokio::spawn(async move { H::on_guild_create(http_client).await; }); }
                                     _ => ()
                                 }
                             }

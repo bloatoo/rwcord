@@ -1,8 +1,15 @@
-use rwcord::{Client, Handler};
+use rwcord::{async_trait, discord::Message, http::HTTPClient, Client, Handler};
 
 struct EventHandler {}
 
-impl Handler for EventHandler {}
+#[async_trait]
+impl Handler for EventHandler {
+    async fn on_message_create(message: Message, http: Box<HTTPClient>) {
+        if message.content() == "Hey!" {
+            message.reply(http, "h").await;
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() {

@@ -2,6 +2,7 @@ use crate::discord::{Message, API_URL};
 use reqwest::{Client, Response};
 use serde_json::json;
 use std::error::Error;
+use std::fmt::Display;
 
 #[derive(Debug, Clone)]
 pub struct HTTPClient {
@@ -42,8 +43,8 @@ impl HTTPClient {
 
     pub async fn send_message(
         &self,
-        channel_id: String,
-        content: String,
+        channel_id: &str,
+        content: &str,
     ) -> Result<Message, Box<dyn std::error::Error>> {
         let path = format!("/channels/{}/messages", channel_id);
 
