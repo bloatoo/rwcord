@@ -13,9 +13,12 @@ use futures::{
 };
 
 use tokio_tungstenite::connect_async;
-use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::tungstenite::Message as TungsteniteMessage;
 
 pub const API_URL: &str = "wss://gateway.discord.gg/?v=9&encoding=json";
+
+pub mod message;
+pub use message::Message;
 
 pub enum Payload {
     Heartbeat,
@@ -65,7 +68,7 @@ impl<T: AsRef<str>> From<T> for EventType {
 
 #[async_trait]
 pub trait Handler {
-    async fn on_message_create() {}
+    async fn on_message_create(message: Message) {}
     async fn on_ready() {}
     async fn on_guild_create() {}
 }
@@ -111,7 +114,7 @@ impl Client {
 
                                     spawn_heartbeater(heartbeat_interval, heartbeat_tx);
 
-                                    let identify = Message::Text(Payload::Identify(self.token.clone(), 513).to_string());
+                                    let identify = TungsteniteMessage::Text(Payload::Identify(self.token.clone(), 513).to_string());
                                     write.send(identify).await.unwrap();
                                 }
                                 _ => (),
@@ -122,7 +125,8 @@ impl Client {
 
                                 match EventType::from(t) {
                                     MessageCreate => {
-                                        H::on_message_create().await;
+                                        let message = serde_json::from_value(json["d"].clone()).unwrap();
+                                        H::on_message_create(message).await;
                                     }
                                     Ready => {
                                         H::on_ready().await;
@@ -137,7 +141,7 @@ impl Client {
                 }
 
                 _ = heartbeat_rx.next() => {
-                    let message = Message::Text(Payload::Heartbeat.to_string());
+                    let message = TungsteniteMessage::Text(Payload::Heartbeat.to_string());
                     write.send(message).await.unwrap();
                 }
             }
