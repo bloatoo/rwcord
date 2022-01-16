@@ -3,6 +3,7 @@ use reqwest::{Client, Response};
 use serde_json::json;
 use std::error::Error;
 
+#[derive(Debug, Clone)]
 pub struct HTTPClient {
     client: Box<Client>,
     token: &'static str,

@@ -23,7 +23,7 @@ use http::HTTPClient;
 
 #[async_trait]
 pub trait Handler {
-    async fn on_message_create(_message: Message) {}
+    async fn on_message_create(_message: Message, _http: Box<HTTPClient>) {}
     async fn on_ready() {}
     async fn on_guild_create() {}
 }
@@ -50,7 +50,7 @@ impl Client {
 
         let token_box = Box::new(self.token.clone());
 
-        let http_client = HTTPClient::new(Box::leak(token_box));
+        let http_client = Box::new(HTTPClient::new(Box::leak(token_box)));
 
         loop {
             select! {
@@ -82,15 +82,22 @@ impl Client {
                             if let Some(t) = json["t"].as_str() {
                                 use EventType::*;
 
+                                let http_client = http_client.clone();
+
                                 match EventType::from(t) {
                                     MessageCreate => {
                                         let message = serde_json::from_value(json["d"].clone()).unwrap();
-                                        H::on_message_create(message).await;
+
+                                        tokio::spawn(async move {
+                                            H::on_message_create(message, http_client).await;
+                                        });
                                     }
                                     Ready => {
-                                        H::on_ready().await;
+                                        tokio::spawn(async move {
+                                            H::on_ready().await;
+                                        });
                                     }
-                                    GuildCreate => { H::on_guild_create().await; }
+                                    GuildCreate => { tokio::spawn(async move { H::on_guild_create().await; }); }
                                     _ => ()
                                 }
                             }
