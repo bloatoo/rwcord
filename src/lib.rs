@@ -1,6 +1,7 @@
 use serde_json::{json, Value};
 use std::error::Error;
 
+use async_trait::async_trait;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -42,6 +43,33 @@ impl ToString for Payload {
     }
 }
 
+pub enum EventType {
+    MessageCreate,
+    GuildCreate,
+    Ready,
+    Unknown,
+}
+
+impl<T: AsRef<str>> From<T> for EventType {
+    fn from(data: T) -> Self {
+        use EventType::*;
+
+        match data.as_ref() {
+            "MESSAGE_CREATE" => MessageCreate,
+            "GUILD_CREATE" => GuildCreate,
+            "READY" => Ready,
+            _ => Unknown,
+        }
+    }
+}
+
+#[async_trait]
+pub trait Handler {
+    async fn on_message_create() {}
+    async fn on_ready() {}
+    async fn on_guild_create() {}
+}
+
 pub struct Client {
     token: String,
 }
@@ -51,7 +79,7 @@ impl Client {
         Self { token }
     }
 
-    pub async fn start(&self) -> Result<(), Box<dyn Error>> {
+    pub async fn start<H: Handler>(&self) -> Result<(), Box<dyn Error>> {
         let (sock, _) = connect_async(API_URL)
             .await
             .expect("Failed connecting to Discord");
@@ -72,8 +100,9 @@ impl Client {
 
                             let json: Value = serde_json::from_str(text).unwrap();
 
-
                             let opcode = json["op"].as_u64().unwrap();
+
+                            println!("{}", serde_json::to_string_pretty(&json).unwrap());
 
                             match opcode {
                                 10 => {
@@ -86,6 +115,21 @@ impl Client {
                                     write.send(identify).await.unwrap();
                                 }
                                 _ => (),
+                            }
+
+                            if let Some(t) = json["t"].as_str() {
+                                use EventType::*;
+
+                                match EventType::from(t) {
+                                    MessageCreate => {
+                                        H::on_message_create().await;
+                                    }
+                                    Ready => {
+                                        H::on_ready().await;
+                                    }
+                                    GuildCreate => { H::on_guild_create().await; }
+                                    _ => ()
+                                }
                             }
                         }
                         None => break,
