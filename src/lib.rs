@@ -1,7 +1,7 @@
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::error::Error;
 
-use async_trait::async_trait;
+pub use async_trait::async_trait;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -15,60 +15,15 @@ use futures::{
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message as TungsteniteMessage;
 
-pub const API_URL: &str = "wss://gateway.discord.gg/?v=9&encoding=json";
+pub mod discord;
+use discord::{EventType, Message, Payload, API_URL};
 
-pub mod message;
-pub use message::Message;
-
-pub enum Payload {
-    Heartbeat,
-    Identify(String, u64),
-}
-
-impl ToString for Payload {
-    fn to_string(&self) -> String {
-        match self {
-            Self::Heartbeat => r#"{"op":1,"d":null}"#.to_string(),
-            Self::Identify(token, intents) => serde_json::to_string(&json!({
-                "op": 2,
-                "d": {
-                    "token": token,
-                    "intents": intents,
-                    "properties": {
-                        "$os": "linux",
-                        "$browser": "rwcord",
-                        "$device": "rwcord"
-                    }
-                }
-            }))
-            .unwrap(),
-        }
-    }
-}
-
-pub enum EventType {
-    MessageCreate,
-    GuildCreate,
-    Ready,
-    Unknown,
-}
-
-impl<T: AsRef<str>> From<T> for EventType {
-    fn from(data: T) -> Self {
-        use EventType::*;
-
-        match data.as_ref() {
-            "MESSAGE_CREATE" => MessageCreate,
-            "GUILD_CREATE" => GuildCreate,
-            "READY" => Ready,
-            _ => Unknown,
-        }
-    }
-}
+pub mod http;
+use http::HTTPClient;
 
 #[async_trait]
 pub trait Handler {
-    async fn on_message_create(message: Message) {}
+    async fn on_message_create(_message: Message) {}
     async fn on_ready() {}
     async fn on_guild_create() {}
 }
@@ -92,6 +47,10 @@ impl Client {
 
         let mut read = read.fuse();
         let mut heartbeat_rx = heartbeat_rx.fuse();
+
+        let token_box = Box::new(self.token.clone());
+
+        let http_client = HTTPClient::new(Box::leak(token_box));
 
         loop {
             select! {
