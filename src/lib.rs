@@ -16,7 +16,7 @@ use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message as TungsteniteMessage;
 
 pub mod discord;
-use discord::{EventType, Message, Payload, GATEWAY_URL};
+use discord::{EventType, Message, Payload, User, GATEWAY_URL};
 
 pub mod http;
 use http::HTTPClient;
@@ -27,7 +27,7 @@ where
     T: Clone + Send + Sync + 'static,
 {
     async fn on_message_create(_message: Message, _http: Box<HTTPClient>, _state: T) {}
-    async fn on_ready(_http: Box<HTTPClient>, _state: T) {}
+    async fn on_ready(_self: User, _http: Box<HTTPClient>, _state: T) {}
     async fn on_guild_create(_http: Box<HTTPClient>, _state: T) {}
 }
 
@@ -102,12 +102,20 @@ where
                                             H::on_message_create(message, http_client, state).await;
                                         });
                                     }
+
                                     Ready => {
+                                        let user = serde_json::from_value(json["d"]["user"].clone()).unwrap();
+
                                         tokio::spawn(async move {
-                                            H::on_ready(http_client, state).await;
+                                            H::on_ready(user, http_client, state).await;
                                         });
                                     }
-                                    GuildCreate => { tokio::spawn(async move { H::on_guild_create(http_client, state).await; }); }
+
+                                    GuildCreate => {
+                                        tokio::spawn(async move {
+                                            H::on_guild_create(http_client, state).await;
+                                        });
+                                    }
                                     _ => ()
                                 }
                             }

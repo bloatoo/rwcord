@@ -22,4 +22,12 @@ impl User {
     pub fn discriminator(&self) -> &String {
         &self.discriminator
     }
+
+    pub fn blank() -> Self {
+        Self {
+            id: "1234".into(),
+            username: "blank".into(),
+            discriminator: "1234".into(),
+        }
+    }
 }
