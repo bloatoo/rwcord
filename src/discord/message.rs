@@ -1,6 +1,7 @@
 use super::User;
 use crate::http::HTTPClient;
 use serde::{Deserialize, Serialize};
+use std::error::Error;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Message {
@@ -11,8 +12,12 @@ pub struct Message {
 
 impl Message {
     /// Send a message to the channel this message was sent in.
-    pub async fn reply(&self, http: &Box<HTTPClient>, content: &str) {
-        http.send_message(&self.channel_id, content).await.unwrap();
+    pub async fn reply(
+        &self,
+        http: &Box<HTTPClient>,
+        content: &str,
+    ) -> Result<Message, Box<dyn Error>> {
+        Ok(http.send_message(&self.channel_id, content).await?)
     }
 
     /// The content of the message.

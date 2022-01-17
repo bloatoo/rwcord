@@ -28,7 +28,9 @@ impl Handler<State> for EventHandler {
                 state.self_user.id(),
             );
 
-            message.reply(ctx.http(), &content).await;
+            if let Err(e) = message.reply(ctx.http(), &content).await {
+                println!("Failed sending message: {}", e);
+            }
         }
     }
 }

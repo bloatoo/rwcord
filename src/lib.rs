@@ -66,64 +66,61 @@ where
 
         loop {
             select! {
-                msg = read.next() => {
-                    match msg {
-                        Some(msg) => {
-                            let msg = msg.expect("Message contains an error");
-                            let text = msg.to_text().unwrap();
+                message = read.next() => {
+                    if let Some(msg) = message {
+                        let msg = msg.expect("Message contains an error");
+                        let text = msg.to_text().unwrap();
 
-                            if text.is_empty() { continue; }
+                        if text.is_empty() { continue; }
 
-                            let json: Value = serde_json::from_str(text).unwrap();
-                            println!("{}", serde_json::to_string_pretty(&json).unwrap());
+                        let json: Value = serde_json::from_str(text).unwrap();
+                        println!("{}", serde_json::to_string_pretty(&json).unwrap());
 
-                            let opcode = json["op"].as_u64().unwrap();
+                        let opcode = json["op"].as_u64().unwrap();
 
-                            match opcode {
-                                10 => {
-                                    let heartbeat_interval = json["d"]["heartbeat_interval"].as_u64().unwrap();
-                                    let heartbeat_tx = heartbeat_tx.clone();
+                        match opcode {
+                            10 => {
+                                let heartbeat_interval = json["d"]["heartbeat_interval"].as_u64().unwrap();
+                                let heartbeat_tx = heartbeat_tx.clone();
 
-                                    spawn_heartbeater(heartbeat_interval, heartbeat_tx);
+                                spawn_heartbeater(heartbeat_interval, heartbeat_tx);
 
-                                    let identify = TungsteniteMessage::Text(Payload::Identify(self.token.clone(), 513).to_string());
-                                    write.send(identify).await.unwrap();
-                                }
-                                _ => (),
+                                let identify = TungsteniteMessage::Text(Payload::Identify(self.token.clone(), 513).to_string());
+                                write.send(identify).await.unwrap();
                             }
+                            _ => (),
+                        }
 
-                            if let Some(t) = json["t"].as_str() {
-                                use EventType::*;
+                        if let Some(t) = json["t"].as_str() {
+                            use EventType::*;
 
-                                let ctx = context.clone();
+                            let ctx = context.clone();
 
-                                match EventType::from(t) {
-                                    MessageCreate => {
-                                        let message = serde_json::from_value(json["d"].clone()).unwrap();
+                            match EventType::from(t) {
+                                MessageCreate => {
+                                    let message = serde_json::from_value(json["d"].clone()).unwrap();
 
-                                        tokio::spawn(async move {
-                                            H::on_message_create(ctx, message).await;
-                                        });
-                                    }
-
-                                    Ready => {
-                                        let user = serde_json::from_value(json["d"]["user"].clone()).unwrap();
-
-                                        tokio::spawn(async move {
-                                            H::on_ready(ctx, user).await;
-                                        });
-                                    }
-
-                                    GuildCreate => {
-                                        tokio::spawn(async move {
-                                            H::on_guild_create(ctx).await;
-                                        });
-                                    }
-                                    _ => ()
+                                    tokio::spawn(async move {
+                                        H::on_message_create(ctx, message).await;
+                                    });
                                 }
+
+                                Ready => {
+                                    let user = serde_json::from_value(json["d"]["user"].clone()).unwrap();
+
+                                    tokio::spawn(async move {
+                                        H::on_ready(ctx, user).await;
+                                    });
+                                }
+
+                                GuildCreate => {
+                                    tokio::spawn(async move {
+                                        H::on_guild_create(ctx).await;
+                                    });
+                                }
+                                _ => ()
                             }
                         }
-                        None => break,
                     }
                 }
 
@@ -133,8 +130,6 @@ where
                 }
             }
         }
-
-        Ok(())
     }
 }
 

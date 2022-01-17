@@ -55,6 +55,7 @@ impl HTTPClient {
 
         let res = self.post(&path, body).await?;
         let res_json = res.text().await?;
+        println!("{}", res_json);
         let message = serde_json::from_str(&res_json)?;
 
         Ok(message)
