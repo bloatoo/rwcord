@@ -22,22 +22,29 @@ pub mod http;
 use http::HTTPClient;
 
 #[async_trait]
-pub trait Handler {
-    async fn on_message_create(_message: Message, _http: Box<HTTPClient>) {}
-    async fn on_ready(_http: Box<HTTPClient>) {}
-    async fn on_guild_create(_http: Box<HTTPClient>) {}
+pub trait Handler<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    async fn on_message_create(_message: Message, _http: Box<HTTPClient>, _state: T) {}
+    async fn on_ready(_http: Box<HTTPClient>, _state: T) {}
+    async fn on_guild_create(_http: Box<HTTPClient>, _state: T) {}
 }
 
-pub struct Client {
+pub struct Client<T> {
+    state: T,
     token: String,
 }
 
-impl Client {
-    pub fn new(token: String) -> Self {
-        Self { token }
+impl<T> Client<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    pub fn new(token: String, state: T) -> Self {
+        Self { token, state }
     }
 
-    pub async fn start<H: Handler>(&self) -> Result<(), Box<dyn Error>> {
+    pub async fn start<H: Handler<T>>(&self) -> Result<(), Box<dyn Error>> {
         let (sock, _) = connect_async(GATEWAY_URL)
             .await
             .expect("Failed connecting to Discord");
@@ -80,6 +87,8 @@ impl Client {
                                 _ => (),
                             }
 
+                            let state = self.state.clone();
+
                             if let Some(t) = json["t"].as_str() {
                                 use EventType::*;
 
@@ -90,15 +99,15 @@ impl Client {
                                         let message = serde_json::from_value(json["d"].clone()).unwrap();
 
                                         tokio::spawn(async move {
-                                            H::on_message_create(message, http_client).await;
+                                            H::on_message_create(message, http_client, state).await;
                                         });
                                     }
                                     Ready => {
                                         tokio::spawn(async move {
-                                            H::on_ready(http_client).await;
+                                            H::on_ready(http_client, state).await;
                                         });
                                     }
-                                    GuildCreate => { tokio::spawn(async move { H::on_guild_create(http_client).await; }); }
+                                    GuildCreate => { tokio::spawn(async move { H::on_guild_create(http_client, state).await; }); }
                                     _ => ()
                                 }
                             }

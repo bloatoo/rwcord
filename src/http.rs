@@ -2,7 +2,6 @@ use crate::discord::{Message, API_URL};
 use reqwest::{Client, Response};
 use serde_json::json;
 use std::error::Error;
-use std::fmt::Display;
 
 #[derive(Debug, Clone)]
 pub struct HTTPClient {
