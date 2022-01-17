@@ -6,7 +6,8 @@ struct EventHandler {}
 impl Handler for EventHandler {
     async fn on_message_create(message: Message, http: Box<HTTPClient>) {
         if message.content() == "Hey!" {
-            message.reply(http, "h").await;
+            let content = format!("Hey {}", message.author().username());
+            message.reply(http, &content).await;
         }
     }
 }
