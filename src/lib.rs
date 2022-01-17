@@ -46,7 +46,10 @@ where
         Self { token, state }
     }
 
-    pub async fn start<H: Handler<T>>(&self) -> Result<(), Box<dyn Error>> {
+    pub async fn start<H>(&self) -> Result<(), Box<dyn Error>>
+    where
+        H: Handler<T>,
+    {
         let (sock, _) = connect_async(GATEWAY_URL)
             .await
             .expect("Failed connecting to Discord");

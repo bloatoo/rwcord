@@ -3,12 +3,18 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
-pub struct Context<T> {
+pub struct Context<T>
+where
+    T: Clone,
+{
     state: Arc<RwLock<T>>,
     http_client: Box<HTTPClient>,
 }
 
-impl<T> Context<T> {
+impl<T> Context<T>
+where
+    T: Clone,
+{
     pub fn new(state: T, token_box: Box<String>) -> Self {
         let state = Arc::new(RwLock::new(state));
         let token_leak = Box::leak(token_box);
