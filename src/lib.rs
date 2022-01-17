@@ -19,16 +19,18 @@ pub mod discord;
 use discord::{EventType, Message, Payload, User, GATEWAY_URL};
 
 pub mod http;
-use http::HTTPClient;
+
+pub mod context;
+pub use context::Context;
 
 #[async_trait]
 pub trait Handler<T>
 where
     T: Clone + Send + Sync + 'static,
 {
-    async fn on_message_create(_message: Message, _http: Box<HTTPClient>, _state: T) {}
-    async fn on_ready(_self: User, _http: Box<HTTPClient>, _state: T) {}
-    async fn on_guild_create(_http: Box<HTTPClient>, _state: T) {}
+    async fn on_message_create(_ctx: Context<T>, _message: Message) {}
+    async fn on_ready(_ctx: Context<T>, _self: User) {}
+    async fn on_guild_create(_ctx: Context<T>) {}
 }
 
 pub struct Client<T> {
@@ -57,7 +59,7 @@ where
 
         let token_box = Box::new(self.token.clone());
 
-        let http_client = Box::new(HTTPClient::new(Box::leak(token_box)));
+        let context = Context::new(self.state.clone(), token_box.clone());
 
         loop {
             select! {
@@ -87,19 +89,17 @@ where
                                 _ => (),
                             }
 
-                            let state = self.state.clone();
-
                             if let Some(t) = json["t"].as_str() {
                                 use EventType::*;
 
-                                let http_client = http_client.clone();
+                                let ctx = context.clone();
 
                                 match EventType::from(t) {
                                     MessageCreate => {
                                         let message = serde_json::from_value(json["d"].clone()).unwrap();
 
                                         tokio::spawn(async move {
-                                            H::on_message_create(message, http_client, state).await;
+                                            H::on_message_create(ctx, message).await;
                                         });
                                     }
 
@@ -107,13 +107,13 @@ where
                                         let user = serde_json::from_value(json["d"]["user"].clone()).unwrap();
 
                                         tokio::spawn(async move {
-                                            H::on_ready(user, http_client, state).await;
+                                            H::on_ready(ctx, user).await;
                                         });
                                     }
 
                                     GuildCreate => {
                                         tokio::spawn(async move {
-                                            H::on_guild_create(http_client, state).await;
+                                            H::on_guild_create(ctx).await;
                                         });
                                     }
                                     _ => ()

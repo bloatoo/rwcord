@@ -11,7 +11,7 @@ pub struct Message {
 
 impl Message {
     /// Send a message to the channel this message was sent in.
-    pub async fn reply(&self, http: Box<HTTPClient>, content: &str) {
+    pub async fn reply(&self, http: &Box<HTTPClient>, content: &str) {
         http.send_message(&self.channel_id, content).await.unwrap();
     }
 

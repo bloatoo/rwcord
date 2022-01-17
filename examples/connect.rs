@@ -1,30 +1,34 @@
 use rwcord::{
     async_trait,
     discord::{Message, User},
-    http::HTTPClient,
-    Client, Handler,
+    Client, Context, Handler,
 };
-
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 struct EventHandler {}
 
 #[derive(Clone)]
 struct State {
-    self_user: User,
+    pub self_user: User,
 }
 
 #[async_trait]
-impl Handler<Arc<Mutex<State>>> for EventHandler {
-    async fn on_ready(self_user: User, _http: Box<HTTPClient>, state: Arc<Mutex<State>>) {
-        let mut state = state.lock().await;
+impl Handler<State> for EventHandler {
+    async fn on_ready(ctx: Context<State>, self_user: User) {
+        let mut state = ctx.state().write().await;
         state.self_user = self_user;
     }
-    async fn on_message_create(message: Message, http: Box<HTTPClient>, _state: Arc<Mutex<State>>) {
+
+    async fn on_message_create(ctx: Context<State>, message: Message) {
         if message.content() == "Hey!" {
-            let content = format!("Hey {}", message.author().username());
-            message.reply(http, &content).await;
+            let state = ctx.state().read().await;
+
+            let content = format!(
+                "Hey {}, my ID is {}",
+                message.author().username(),
+                state.self_user.id(),
+            );
+
+            message.reply(ctx.http(), &content).await;
         }
     }
 }
@@ -37,6 +41,6 @@ async fn main() {
         self_user: User::blank(),
     };
 
-    let client = Client::new(token, Arc::new(Mutex::new(s)));
+    let client = Client::new(token, s);
     client.start::<EventHandler>().await.unwrap();
 }
