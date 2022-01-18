@@ -24,6 +24,8 @@ impl HTTPClient {
             .send()
             .await?;
 
+        let headers = res.headers();
+
         Ok(res)
     }
 
@@ -36,6 +38,20 @@ impl HTTPClient {
             .header("Authorization", format!("Bot {}", self.token))
             .send()
             .await?;
+
+        let headers = res.headers();
+
+        if let Some(limit) = headers.get("x-ratelimit-limit") {
+            println!("rl-limit: {}", limit.to_str().unwrap());
+        }
+
+        if let Some(remaining) = headers.get("x-ratelimit-remaining") {
+            println!("rl-remaining: {}", remaining.to_str().unwrap());
+        }
+
+        if let Some(reset) = headers.get("x-ratelimit-reset") {
+            println!("rl-reset: {}", reset.to_str().unwrap());
+        }
 
         Ok(res)
     }
