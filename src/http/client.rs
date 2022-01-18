@@ -1,3 +1,4 @@
+use super::rate_limit::RateLimits;
 use crate::discord::{Message, API_URL};
 use reqwest::{Client, Response};
 use serde_json::json;
@@ -7,12 +8,18 @@ use std::error::Error;
 pub struct HTTPClient {
     client: Box<Client>,
     token: &'static str,
+    rate_limits: RateLimits,
 }
 
 impl HTTPClient {
     pub fn new(token: &'static str) -> Self {
         let client = Box::new(Client::new());
-        Self { client, token }
+        let rate_limits = RateLimits::default();
+        Self {
+            client,
+            token,
+            rate_limits,
+        }
     }
 
     pub async fn get(&self, path: &str) -> Result<Response, Box<dyn Error>> {
