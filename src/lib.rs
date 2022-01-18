@@ -128,6 +128,7 @@ where
                 }
 
                 _ = heartbeat_rx.next() => {
+                    println!("heartbeat!");
                     let message = TungsteniteMessage::Text(Payload::Heartbeat.to_string());
                     write.send(message).await.unwrap();
                 }
@@ -140,7 +141,9 @@ where
 
 fn spawn_heartbeater(interval: u64, mut sender: Sender<u8>) {
     tokio::spawn(async move {
-        sender.send(1).await.unwrap();
-        sleep(Duration::from_millis(interval)).await;
+        loop {
+            sender.send(1).await.unwrap();
+            sleep(Duration::from_millis(interval)).await;
+        }
     });
 }

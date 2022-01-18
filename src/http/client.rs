@@ -31,8 +31,6 @@ impl HTTPClient {
             .send()
             .await?;
 
-        let headers = res.headers();
-
         Ok(res)
     }
 
