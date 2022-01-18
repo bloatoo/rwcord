@@ -8,14 +8,14 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct Bucket {
     pub limit: u32,
     pub remaining: u32,
     pub reset: u64,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct RateLimits {
     buckets: Arc<Mutex<HashMap<String, Bucket>>>,
 }
