@@ -1,5 +1,8 @@
 use super::rate_limit::RateLimits;
-use crate::discord::{Message, API_URL};
+use crate::discord::{
+    message::{Message, Sendable},
+    API_URL,
+};
 use reqwest::{Client, Response};
 use serde_json::json;
 use std::error::Error;
@@ -64,15 +67,11 @@ impl HTTPClient {
     pub async fn send_message(
         &self,
         channel_id: &str,
-        content: &str,
+        content: impl Sendable,
     ) -> Result<Message, Box<dyn std::error::Error>> {
         let path = format!("/channels/{}/messages", channel_id);
 
-        let body = serde_json::to_string(&json!({
-            "content": content,
-            "tts": false,
-        }))
-        .unwrap();
+        let body = content.to_request_body();
 
         let res = self.post(&path, body).await?;
         let res_json = res.text().await?;

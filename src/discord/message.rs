@@ -1,7 +1,27 @@
 use super::User;
 use crate::http::HTTPClient;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::error::Error;
+
+pub trait Sendable {
+    fn to_request_body(self) -> String;
+}
+
+impl<T> Sendable for T
+where
+    T: Into<String>,
+{
+    fn to_request_body(self) -> String {
+        let content: String = self.into();
+
+        serde_json::to_string(&json!({
+            "content": content,
+            "tts": false,
+        }))
+        .unwrap()
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Message {
@@ -15,7 +35,7 @@ impl Message {
     pub async fn reply(
         &self,
         http: &Box<HTTPClient>,
-        content: &str,
+        content: impl Sendable,
     ) -> Result<Message, Box<dyn Error>> {
         Ok(http.send_message(&self.channel_id, content).await?)
     }
