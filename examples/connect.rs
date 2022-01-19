@@ -43,6 +43,6 @@ async fn main() {
         self_user: User::blank(),
     };
 
-    let client = Client::new(token, s);
-    client.start::<EventHandler>().await.unwrap();
+    let client = Client::new(token);
+    client.start::<EventHandler>(s).await.unwrap();
 }

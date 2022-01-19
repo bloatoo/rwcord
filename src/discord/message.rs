@@ -10,13 +10,11 @@ pub trait Sendable {
 
 impl<T> Sendable for T
 where
-    T: Into<String>,
+    T: AsRef<str>,
 {
     fn to_request_body(self) -> String {
-        let content: String = self.into();
-
         serde_json::to_string(&json!({
-            "content": content,
+            "content": self.as_ref(),
             "tts": false,
         }))
         .unwrap()

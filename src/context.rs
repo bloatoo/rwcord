@@ -2,19 +2,12 @@ use crate::http::HTTPClient;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-#[derive(Clone)]
-pub struct Context<T>
-where
-    T: Clone,
-{
+pub struct Context<T> {
     state: Arc<RwLock<T>>,
     http_client: Box<HTTPClient>,
 }
 
-impl<T> Context<T>
-where
-    T: Clone,
-{
+impl<T> Context<T> {
     pub fn new(state: T, token_box: Box<String>) -> Self {
         let state = Arc::new(RwLock::new(state));
         let token_leak = Box::leak(token_box);
@@ -29,5 +22,14 @@ where
 
     pub fn state(&self) -> &Arc<RwLock<T>> {
         &self.state
+    }
+}
+
+impl<T> Clone for Context<T> {
+    fn clone(&self) -> Self {
+        Self {
+            state: Arc::clone(&self.state),
+            http_client: self.http_client.clone(),
+        }
     }
 }

@@ -2,6 +2,7 @@ use serde_json::Value;
 use std::error::Error;
 
 pub use async_trait::async_trait;
+use std::marker::PhantomData;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -26,7 +27,7 @@ pub use context::Context;
 #[async_trait]
 pub trait Handler<T>
 where
-    T: Clone + Send + Sync + 'static,
+    T: Send + Sync + 'static,
 {
     async fn on_message_create(_ctx: Context<T>, _message: Message) {}
     async fn on_ready(_ctx: Context<T>, _self: User) {}
@@ -34,20 +35,24 @@ where
 }
 
 pub struct Client<T> {
-    state: T,
+    _marker: PhantomData<T>,
     token: String,
 }
 
 impl<T> Client<T>
 where
-    T: Clone + Send + Sync + 'static,
+    T: Send + Sync + 'static,
 {
-    pub fn new(token: String, state: T) -> Self {
-        Self { token, state }
+    pub fn new(token: String) -> Self {
+        Self {
+            token,
+            _marker: PhantomData::default(),
+        }
     }
 
-    pub async fn start<H>(&self) -> Result<(), Box<dyn Error>>
+    pub async fn start<H>(&self, state: T) -> Result<(), Box<dyn Error>>
     where
+        T: Send + Sync + 'static,
         H: Handler<T>,
     {
         let (sock, _) = connect_async(GATEWAY_URL)
@@ -62,7 +67,7 @@ where
 
         let token_box = Box::new(self.token.clone());
 
-        let context = Context::new(self.state.clone(), token_box.clone());
+        let context = Context::new(state, token_box.clone());
 
         loop {
             select! {
