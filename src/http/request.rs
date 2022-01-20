@@ -1,5 +1,15 @@
 use crate::discord::message::Sendable;
+use reqwest::Method;
 
-pub enum Request {
-    SendMessage(Box<dyn Sendable>),
+pub enum RequestType<'a> {
+    MessageSend(&'a dyn Sendable, String),
+}
+pub struct Request {
+    method: Method,
+}
+
+impl Request {
+    pub fn bucket_id(&self) {}
+
+    pub fn build_req() {}
 }

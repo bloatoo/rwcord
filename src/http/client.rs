@@ -3,7 +3,7 @@ use crate::discord::{
     message::{Message, Sendable},
     API_URL,
 };
-use reqwest::{Client, Response};
+use reqwest::{Client, RequestBuilder, Response, Url};
 use serde_json::json;
 use std::error::Error;
 
@@ -18,6 +18,7 @@ impl HTTPClient {
     pub fn new(token: &'static str) -> Self {
         let client = Box::new(Client::new());
         let rate_limits = RateLimits::default();
+
         Self {
             client,
             token,
