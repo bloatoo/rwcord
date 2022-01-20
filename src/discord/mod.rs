@@ -6,6 +6,9 @@ pub use message::Message;
 pub mod user;
 pub use user::User;
 
+pub mod embed;
+pub use embed::Embed;
+
 pub const GATEWAY_URL: &str = "wss://gateway.discord.gg/?v=9&encoding=json";
 pub const API_URL: &str = "https://discord.com/api/v9";
 
