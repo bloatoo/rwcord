@@ -74,13 +74,12 @@ where
                 message = read.next() => {
                     match message {
                         Some(msg) => {
-                            let msg = msg.expect("Message contains an error");
+                            let msg = msg.expect("Message contains an error.");
                             let text = msg.to_text().unwrap();
 
                             if text.is_empty() { continue; }
 
-                            let json: Value = serde_json::from_str(text).unwrap();
-                            println!("{}", serde_json::to_string_pretty(&json).unwrap());
+                            let json: Value = serde_json::from_str(text).expect(&format!("Error when parsing JSON: {}", text));
 
                             let opcode = json["op"].as_u64().unwrap();
 
