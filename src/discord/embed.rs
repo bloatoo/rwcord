@@ -23,6 +23,14 @@ pub struct EmbedField {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct EmbedImage {
+    pub url: String,
+    pub proxy_url: Option<String>,
+    pub height: Option<u32>,
+    pub width: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Embed {
     title: String,
     description: String,
@@ -31,6 +39,7 @@ pub struct Embed {
     footer: EmbedFooter,
     author: EmbedAuthor,
     fields: Vec<EmbedField>,
+    image: EmbedImage,
 }
 
 impl Sendable for Embed {
@@ -56,6 +65,10 @@ impl Embed {
             title: title.to_string(),
             ..self
         }
+    }
+
+    pub fn image(self, image: EmbedImage) -> Self {
+        Self { image, ..self }
     }
 
     pub fn description<T: ToString>(self, description: T) -> Self {
