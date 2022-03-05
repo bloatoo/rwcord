@@ -13,7 +13,7 @@ struct EventHandler {}
 impl Handler<()> for EventHandler {
     async fn on_message_create(ctx: Context<()>, message: Message) {
         if message.content() == "!embed" {
-            let embed = Embed::nbased()
+            let embed = Embed::new()
                 .title("This is a test embed")
                 .description("This is a description.")
                 .color("#FF0000")
